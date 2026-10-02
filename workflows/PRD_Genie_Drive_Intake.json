@@ -1,0 +1,401 @@
+{
+  "name": "PRD Genie - Drive Intake",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "1zs_pz3HKa0KJKhyywdTL7C1uR35JqDaV",
+          "mode": "list",
+          "cachedResultName": "PRD-Genie",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1zs_pz3HKa0KJKhyywdTL7C1uR35JqDaV"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        -128,
+        48
+      ],
+      "id": "d1e3d09a-5513-4d5e-bbc4-2791853b0156",
+      "name": "Google Drive Trigger",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "G7GBuT42utRyZZsG",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        96,
+        48
+      ],
+      "id": "abbeca4d-d2e7-48b8-964a-fde855c788ab",
+      "name": "Download file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "G7GBuT42utRyZZsG",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        320,
+        48
+      ],
+      "id": "d17cd891-2ad2-4f69-84ac-60b2571abc58",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "jsCode": "const out = [];\n$input.all().forEach((it, i) => {\n  let name = '';\n  const tryName = (fn) => {\n    if (name) return;\n    try { const v = fn(); if (v) name = String(v); } catch (e) {}\n  };\n\n  tryName(() => $('Download file').itemMatching(i).binary.data.fileName);\n  tryName(() => $('List Inbox Files').itemMatching(i).json.name);\n  tryName(() => $('Google Drive Trigger').itemMatching(i).json.name);\n  tryName(() => it.binary && it.binary.data && it.binary.data.fileName);\n  if (!name) name = `file_${i + 1}`;\n\n  const text = String(it.json.text ?? it.json.data ?? '').trim();\n  const lower = name.toLowerCase();\n  const input_type = lower.includes('brief') ? 'brief'\n    : lower.includes('note') ? 'notes'\n    : 'transcript';\n\n  out.push({ json: { input_text: text, input_type, source_file: name } });\n});\nreturn out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        544,
+        48
+      ],
+      "id": "1a634eba-f2bc-4de8-8283-f123629c8fcd",
+      "name": "Prepare Input"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        768,
+        48
+      ],
+      "id": "018c67f8-3e93-488b-b6f3-2c7bdc7a08f2",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "oeg2hRNXOyf9yRUV",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/oeg2hRNXOyf9yRUV",
+          "cachedResultName": "PRD-Genie Main"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        992,
+        16
+      ],
+      "id": "148da837-b55a-4b7a-8c79-d7417570dcf4",
+      "name": "Call 'PRD-Genie Main'",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const r = $input.first().json;\n\nlet src = r.source_file;\nif (!src) { try { src = $('Loop Over Items').item.json.source_file; } catch (e) {} }\n\nconst base = String(src || 'file').replace(/\\.[^.]+$/, '').replace(/[^\\w\\- ]+/g, '_').trim() || 'file';\nconst suffix = String(r.trace_id || Date.now()).replace(/-/g, '').slice(0, 6);\nconst file_name = `PRD_${base}_${suffix}.md`;\n\nconst body = r.markdown || '# No output\\n\\nThe run returned no result for this file.';\nconst header = `<!-- Source file: ${src || 'unknown'} | Route: ${r.status || 'n/a'} -->\\n\\n`;\n\nreturn [{ json: { file_name, content: header + body, status: r.status } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1216,
+        96
+      ],
+      "id": "b2f615a3-5217-4014-b58a-bb7a7ca234d0",
+      "name": "Build Output File"
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "content",
+        "options": {
+          "fileName": "={{ $json.file_name }}"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1440,
+        96
+      ],
+      "id": "e36cae22-bb22-439b-b069-3a8910c3a691",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "name": "={{ $binary.data.fileName }}",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1VAUcRMNeMUIY7HxuknSnLEaVBXdjlSpE",
+          "mode": "list",
+          "cachedResultName": "Output",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1VAUcRMNeMUIY7HxuknSnLEaVBXdjlSpE"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1664,
+        96
+      ],
+      "id": "807b2ba3-92ae-40cf-b529-8e8fc3f25f65",
+      "name": "Upload file",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "G7GBuT42utRyZZsG",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 20
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        992,
+        272
+      ],
+      "id": "a477e365-313a-4d71-bd17-39348ff7180f",
+      "name": "Wait",
+      "webhookId": "b07087c9-335e-4560-bf21-9abd7de2ebbf"
+    },
+    {
+      "parameters": {
+        "resource": "fileFolder",
+        "returnAll": true,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "value": "1zs_pz3HKa0KJKhyywdTL7C1uR35JqDaV",
+            "mode": "list",
+            "cachedResultName": "PRD-Genie",
+            "cachedResultUrl": "https://drive.google.com/drive/folders/1zs_pz3HKa0KJKhyywdTL7C1uR35JqDaV"
+          },
+          "whatToSearch": "files"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        64,
+        288
+      ],
+      "id": "3985be73-8b92-4ae3-9c26-6b34a86bf487",
+      "name": "List Inbox Files",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "G7GBuT42utRyZZsG",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -160,
+        288
+      ],
+      "id": "1a7bc064-280a-4f84-8f59-aa74f261f17e",
+      "name": "When clicking ‘Execute workflow’"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Drive Trigger": {
+      "main": [
+        [
+          {
+            "node": "Download file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file": {
+      "main": [
+        [
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Prepare Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Input": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Call 'PRD-Genie Main'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'PRD-Genie Main'": {
+      "main": [
+        [
+          {
+            "node": "Build Output File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Output File": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Upload file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload file": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Inbox Files": {
+      "main": [
+        [
+          {
+            "node": "Download file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "List Inbox Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "433191a4-602f-4f0f-9554-0b2359f51de3",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "id": "1NRMzFV3ZqdABIlc",
+  "tags": []
+}

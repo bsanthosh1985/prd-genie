@@ -1,0 +1,917 @@
+{
+  "name": "PRD-Genie Main",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "PRD Genie",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "input_text",
+              "fieldType": "textarea"
+            },
+            {
+              "fieldLabel": "input_type",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "transcript"
+                  },
+                  {
+                    "option": "brief"
+                  },
+                  {
+                    "option": "notes"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        0,
+        0
+      ],
+      "id": "244fa275-330f-4180-9c7c-2d651bf5d2c8",
+      "name": "On form submission",
+      "webhookId": "b12cf5bd-defb-4252-a640-2a5bb85853c7"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3.5-flash-lite",
+          "mode": "list",
+          "cachedResultName": "models/gemini-3.5-flash-lite"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a requirements extraction analyst. Use ONLY the provided input.\n\nRules:\n1. A stated requirement must be supported by a verbatim quote from the input. Include the quote in source_quote.\n2. Never invent metrics, users, formats, features, or numbers. Copy numbers exactly, with no rounding.\n3. If the input is vague or incomplete, set sufficiency to \"partial\" or \"insufficient\", list what is missing in missing_info, and leave stated_requirements empty or minimal. Never fill gaps.\n4. If two statements conflict, record them under contradictions. Do not resolve them.\n5. If stakeholders disagree, record every viewpoint neutrally under stakeholders. Do not favor any side.\n6. Copy acceptance criteria verbatim. Do not add any.\n7. Classify performance, scale, and integration-version items as type \"nfr\".\n8. Anything you infer goes in \"assumptions\", never in stated_requirements.\n9. If the input contains no requirements at all, set sufficiency to \"insufficient\" and return empty lists.\n10. Do not expand abbreviations or add titles. Write roles exactly as given in the source (for example \"PM\").\n11. For every topic the input mentions but does not define (for example \"the dashboard\", \"real-time\", \"budget\"), add one missing_info entry naming exactly what is undefined (which dashboard, what real-time means, what the budget amount is). Do not add missing_info about topics the input never mentions, such as goals, scope, or timeline.\n12. Each missing_info entry must be a specific, answerable gap (for example \"Which categories exist\"), not a single word copied from the input.\n13. Before finishing, compare every pair of stated requirements for conflict. A conflict exists when satisfying one makes it harder to satisfy another (for example, frequent refresh versus minimizing API calls). Record each conflict in contradictions with both statements quoted. Never resolve it, and never drop either statement.\n14. A general wish that names no capability, such as \"we need better reporting\" or \"make it like Competitor X\", is NOT a stated requirement. Record it only in ambiguities and missing_info. Explicit constraints and priorities that name a specific thing (for example \"minimize API calls\") remain stated requirements of type \"constraint\" or \"nfr\".\n15. When a sentence adds a condition that a specific feature's output must satisfy (for example \"PDF must include company logo\" or \"CSV must preserve formulas\" after \"Users need to export reports as PDF and CSV\"), put it in acceptance_criteria, with linked_to set to that feature's requirement ID and the text copied verbatim. Do NOT also list it as a separate requirement. The feature sentence itself is the stated requirement. Performance, scale, and integration limits (response times, user counts, API versions) stay as \"nfr\" requirements, not acceptance criteria.\n16. Whenever two or more stakeholders each state a preference, check whether those preferences can all be satisfied together. If they pull in different directions (different technology or design approaches for the same product, or an approach that puts another stakeholder's deadline at risk), you MUST add an entry to contradictions. Put each side in statement_a and statement_b, naming the stakeholder, and set the note to \"needs stakeholder resolution\". Never leave contradictions empty when different stakeholders propose different approaches or competing priorities. Do not choose a side, and do not drop any statement.\nFor every item in \"dependencies\", write one line under \"8. Dependencies and Risks\" giving the item, the owner, and the ETA. If eta is \"unknown\", ALSO write a line starting \"Risk:\" stating that the ETA for that dependency is unknown and is a schedule risk for the feature that depends on it, and add \"ETA for <item> (owner: <owner>) is unknown\" to \"10. Open Questions\". Use the word ETA. Do not invent dates or estimates.\n\nReturn ONLY valid JSON in exactly this schema:\n{\n  \"sufficiency\": \"sufficient | partial | insufficient\",\n  \"stated_requirements\": [\n    {\"id\": \"R1\", \"text\": \"\", \"type\": \"functional | nfr | constraint\", \"source_quote\": \"\"}\n  ],\n  \"acceptance_criteria\": [{\"linked_to\": \"R1\", \"text\": \"\"}],\n  \"stakeholders\": [{\"name\": \"\", \"role\": \"\", \"viewpoint\": \"\"}],\n  \"personas\": [\"\"],\n  \"deadlines\": [\"\"],\n  \"dependencies\": [{\"item\": \"\", \"owner\": \"\", \"eta\": \"known | unknown\"}],\n  \"ambiguities\": [{\"item\": \"\", \"why_ambiguous\": \"\"}],\n  \"contradictions\": [{\"statement_a\": \"\", \"statement_b\": \"\", \"note\": \"needs stakeholder resolution\"}],\n  \"missing_info\": [\"\"],\n  \"assumptions\": [\"\"]\n}\n\nInput type: {{ $json.input_type }}\n\nInput:\n{{ $json.input_text }}",
+              "role": "model"
+            },
+            {
+              "content": "=Input type: {{ $json.input_type }}\n\nInput:\n{{ $json.input_text }}"
+            }
+          ]
+        },
+        "simplify": false,
+        "jsonOutput": true,
+        "builtInTools": {},
+        "options": {
+          "maxOutputTokens": 8192,
+          "temperature": 0
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        640,
+        112
+      ],
+      "id": "d3781971-969b-4ea7-8e48-8e2af715a9a0",
+      "name": "Requirement Extractor Agent",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "nT51ruSjlkaPDSgn",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "0b93e50b-f860-4273-9e9e-7c9e5cc480d5",
+              "leftValue": "={{ $json.guard_fail }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        448,
+        80
+      ],
+      "id": "74ef5669-2d12-4416-97de-dc8047a74ded",
+      "name": "Guard Check"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2c7007dc-24c3-4670-ad2a-226e0e8c83aa",
+              "name": "status",
+              "value": "INSUFFICIENT_INPUT",
+              "type": "string"
+            },
+            {
+              "id": "5a44a94f-b427-4ff2-aa12-45332d5f81b2",
+              "name": "message",
+              "value": "No requirements can be extracted from this input. No PRD generated",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        672,
+        -32
+      ],
+      "id": "0cc4144d-485a-47b0-b160-1f0ee07e0513",
+      "name": "Insufficient Input"
+    },
+    {
+      "parameters": {
+        "language": "pythonNative",
+        "pythonCode": "data = dict(_items[0][\"json\"])\ntext = (data.get(\"input_text\") or \"\").strip()\nwords = len(text.split())\ncompact = text.lower().replace(\" \", \"\")\n\ndata[\"input_text\"] = text\ndata[\"word_count\"] = words\ndata[\"guard_fail\"] = words < 8 or \"notes:none\" in compact\n\nreturn [{\"json\": data}]"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        80
+      ],
+      "id": "1178da35-c97c-4551-a4ce-6d412f1d8609",
+      "name": "Input Guard"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "aae2ed1a-0986-4c37-babf-994da5ae4257",
+              "leftValue": "={{ $json.sufficiency }}",
+              "rightValue": "insufficient",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1232,
+        112
+      ],
+      "id": "7f7ff470-f9d1-45e3-a4c4-eea69df8cf24",
+      "name": "Sufficiency Check"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3.5-flash-lite",
+          "mode": "list",
+          "cachedResultName": "models/gemini-3.5-flash-lite"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a PRD writer. Generate a Product Requirements Document in plain Markdown using ONLY the extraction JSON below.\n\nRules:\n1. Populate every section strictly from the JSON. Do not add features, goals, metrics, users, or numbers that are not in it.\n2. Copy numbers, names, and acceptance criteria exactly as written.\n3. If a section has no supporting data, write: \"Not specified in source. See Open Questions.\" Never invent content. Do not write generic goals such as \"improve user experience\".\n4. Cite requirement IDs (R1, R2...) next to each feature and NFR.\n5. Put every item from ambiguities, missing_info, and contradictions into Open Questions. Do not resolve contradictions.\n6. Put items from the assumptions field under Assumptions and label them \"Unconfirmed\".\n7. Represent every stakeholder viewpoint neutrally. Do not favor one.\n8. In \"Stakeholders and Deadlines\", list EVERY stakeholder (name and role) and EVERY deadline from the JSON.\n9. Use ONLY the ten headings below, each exactly once, in this order. Do not add, rename, merge, or repeat headings.\n10. Return plain Markdown only. Do not wrap the output in JSON or code fences.\n11. The Assumptions section may contain ONLY items from the \"assumptions\" array. If that array is empty, write exactly: \"None stated in source.\" Never create assumptions yourself.\n12. The Open Questions section must contain ONLY items from \"ambiguities\", \"missing_info\", and \"contradictions\" in the JSON, and every one of them must appear. Do not add any other question.\n13. Do not add topics, report types, technical specifications, data structures, or any detail that is not in the JSON.\n14. List every item in \"contradictions\" under both \"8. Dependencies and Risks\" and \"10. Open Questions\", quoting both conflicting statements and marking them \"Needs stakeholder resolution\".\nTemplate guidance and any sample PRD below are for section structure and writing style ONLY. If they conflict with any rule above, the rules above win. Never copy requirements, names, numbers, or example content from the template guidance or the sample PRD.\nIf the guidance below contains a sample PRD about another product, ignore its content completely and do not mention its title.\n\nStructure:\n# PRD: <short title derived from the requirements>\n## 1. Overview\n## 2. Goals\n## 3. User Personas\n## 4. Feature List\n## 5. Acceptance Criteria\n## 6. Non-Functional Requirements\n## 7. Stakeholders and Deadlines\n## 8. Dependencies and Risks\n## 9. Assumptions\n## 10. Open Questions\n\nExtraction JSON:\n{{ JSON.stringify($('Parse Extraction').first().json.extraction, null, 2) }}\nTemplate guidance (structure and style only):\n{{ $('Join Template').first().json.template_context }}"
+            }
+          ]
+        },
+        "simplify": false,
+        "builtInTools": {},
+        "options": {
+          "maxOutputTokens": 8192,
+          "temperature": 0.2
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        1456,
+        208
+      ],
+      "id": "9b3766c7-a088-415f-bd70-a246e51794a6",
+      "name": "PRD Generator Agent",
+      "retryOnFail": true,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "nT51ruSjlkaPDSgn",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\nlet prd =\n  item.candidates?.[0]?.content?.parts?.[0]?.text ??\n  item.content?.parts?.[0]?.text ??\n  item.text ??\n  '';\n\nprd = String(prd).replace(/^```(markdown|json)?|```$/gm, '').trim();\n\n// If the model wrapped the PRD in JSON like {\"markdown\": \"...\"}, unwrap it\nif (prd.startsWith('{')) {\n  try {\n    const obj = JSON.parse(prd);\n    prd = obj.markdown || obj.prd || obj.content || prd;\n  } catch (e) {}\n}prd = prd.replace(/\\\\n/g, '\\n');\n\nreturn [{\n  json: {\n    prd_markdown: prd,\n    extraction: $('Parse Extraction').first().json.extraction\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1824,
+        208
+      ],
+      "id": "da1bfdfe-3fa6-4234-9309-fc19d0db3976",
+      "name": "Collect PRD"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3.5-flash-lite",
+          "mode": "list",
+          "cachedResultName": "models/gemini-3.5-flash-lite"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a Story Breakdown agent. Convert the approved requirements into Epics, Features, and User Stories using ONLY the extraction JSON and PRD below.\n\nRules:\n1. Every story must trace to at least one requirement ID in source_req_ids. Do not create stories for anything not in the source.\n2. Use the format: \"As a [persona], I want [capability], so that [benefit]\". If the source states no benefit, omit the \"so that\" clause. Never invent a benefit.\n3. If the source names multiple personas (for example Admin, End User, Auditor), create separate stories for each persona. Never merge them into a generic \"user\" story.\n4. acceptance_criteria: copy ONLY items from the extraction's acceptance_criteria, verbatim. If none exist for a story, return an empty list. Never write new criteria.\n5. NFR requirements (type \"nfr\") are listed by ID in linked_nfrs on the relevant stories. Do not rewrite or round their numbers.\n6. Priority must be one of: \"Must Have\", \"Should Have\", \"Nice to Have\". Use \"Must Have\" for stated functional requirements unless the source uses an explicit priority word such as \"nice to have\", \"optional\", \"if time permits\", or \"lower priority\". Phrasing like \"should be able to\" is not a priority signal. Explain the choice in priority_rationale.\n7. Do not resolve contradictions or ambiguities. If a story depends on an open question, list it in open_questions on that story, using only items from the extraction.\n8. Return ONLY valid JSON. No prose, no code fences.\n\nSchema:\n{\n  \"epics\": [\n    {\n      \"id\": \"E1\",\n      \"title\": \"\",\n      \"description\": \"\",\n      \"features\": [\n        {\n          \"id\": \"F1\",\n          \"title\": \"\",\n          \"stories\": [\n            {\n              \"id\": \"US1\",\n              \"persona\": \"\",\n              \"story\": \"\",\n              \"acceptance_criteria\": [],\n              \"linked_nfrs\": [],\n              \"priority\": \"Must Have | Should Have | Nice to Have\",\n              \"priority_rationale\": \"\",\n              \"source_req_ids\": [],\n              \"open_questions\": []\n            }\n          ]\n        }\n      ]\n    }\n  ]\n}\n\nExtraction JSON:\n{{ JSON.stringify($('Collect PRD').item.json.extraction, null, 2) }}\n\nPRD:\n{{ $('Collect PRD').item.json.prd_markdown }}"
+            }
+          ]
+        },
+        "simplify": false,
+        "builtInTools": {},
+        "options": {
+          "maxOutputTokens": 8192
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        2048,
+        208
+      ],
+      "id": "43082c65-bc61-4810-86e1-8a02ceb4013c",
+      "name": "Story Breakdown Agent",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "nT51ruSjlkaPDSgn",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\nlet raw =\n  item.candidates?.[0]?.content?.parts?.[0]?.text ??\n  item.content?.parts?.[0]?.text ??\n  item.text ??\n  '';\n\nraw = String(raw).replace(/```json|```/g, '').trim();\n\nlet stories;\ntry {\n  stories = JSON.parse(raw);\n} catch (e) {\n  return [{ json: { parse_error: true, error: e.message, raw } }];\n}\n\nreturn [{\n  json: {\n    stories,\n    prd_markdown: $('Collect PRD').first().json.prd_markdown,\n    extraction: $('Collect PRD').first().json.extraction\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2416,
+        208
+      ],
+      "id": "e2bf62fa-a3ae-4363-bf20-280ad27f8d4d",
+      "name": "Parse Stories"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3.5-flash-lite",
+          "mode": "list",
+          "cachedResultName": "models/gemini-3.5-flash-lite"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a Scope Estimator. Assign a T-shirt size to every user story below, using ONLY the information in the stories and extraction.\n\nRules:\n1. Return exactly one entry per story id.\n2. Sizes are S, M, L, or XL. Base the size only on signals present in the source: the number of distinct capabilities in the story, linked NFRs, dependencies, integrations, and open questions. List the signals you used in complexity_signals.\n3. Do not invent technical details, architectures, or effort in hours or days.\n4. Set underspecified to true if any open question or missing detail could materially change the effort. In underspecified_reason, cite the specific open question. Otherwise set it to false and leave the reason empty.\n5. All sizes are provisional. Say so in rationale where relevant.\n6. Return ONLY valid JSON. No prose, no code fences.\n\nSchema:\n{\n  \"estimates\": [\n    {\n      \"story_id\": \"US1\",\n      \"size\": \"S | M | L | XL\",\n      \"rationale\": \"\",\n      \"complexity_signals\": [],\n      \"underspecified\": false,\n      \"underspecified_reason\": \"\"\n    }\n  ]\n}\n\nExtraction JSON:\n{{ JSON.stringify($('Parse Stories').item.json.extraction, null, 2) }}\n\nStories JSON:\n{{ JSON.stringify($('Parse Stories').item.json.stories, null, 2) }}"
+            }
+          ]
+        },
+        "simplify": false,
+        "builtInTools": {},
+        "options": {
+          "maxOutputTokens": 8192,
+          "temperature": 0
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        2720,
+        64
+      ],
+      "id": "4ffe5ea3-bda8-48aa-b46d-0bc13c23b928",
+      "name": "Scope Estimator Agent",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "nT51ruSjlkaPDSgn",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3.5-flash-lite",
+          "mode": "list",
+          "cachedResultName": "models/gemini-3.5-flash-lite"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a Gap Analyzer. Review the extraction and stories below and produce clarification questions for stakeholders.\n\nRules:\n1. Every question must be grounded in an item from the extraction's ambiguities, missing_info, contradictions, or dependencies (including unknown ETAs), or in a story that has empty acceptance_criteria or non-empty open_questions. Quote that item in \"grounded_in\".\n2. Do not invent requirements, do not propose solutions, and do not answer the questions yourself.\n3. Merge duplicates: one question per distinct gap.\n4. \"ask\" must be a stakeholder name or role from the extraction's stakeholders. If none fits, use \"Requester / Product Owner\".\n5. \"blocking\" is true if the gap prevents building or estimating a story, otherwise false.\n6. If there are no gaps, return an empty questions list.\n7. Return ONLY valid JSON. No prose, no code fences.\n8. Mark blocking true only if a story cannot be built or tested without the answer. Missing acceptance criteria alone is not blocking.\n\nSchema:\n{\n  \"readiness\": \"Ready | Needs clarification | Not ready\",\n  \"questions\": [\n    {\n      \"id\": \"Q1\",\n      \"question\": \"\",\n      \"ask\": \"\",\n      \"grounded_in\": \"\",\n      \"related_ids\": [],\n      \"blocking\": true\n    }\n  ]\n}\n\nExtraction JSON:\n{{ JSON.stringify($('Parse Stories').item.json.extraction, null, 2) }}\n\nStories JSON:\n{{ JSON.stringify($('Parse Stories').item.json.stories, null, 2) }}"
+            }
+          ]
+        },
+        "simplify": false,
+        "builtInTools": {},
+        "options": {
+          "maxOutputTokens": 8192,
+          "temperature": 0
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        2640,
+        240
+      ],
+      "id": "86bdeeea-b69f-4179-8e42-d8cff33a5ed6",
+      "name": "Gap Analyzer Agent",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "nT51ruSjlkaPDSgn",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\nlet raw =\n  item.candidates?.[0]?.content?.parts?.[0]?.text ??\n  item.content?.parts?.[0]?.text ??\n  item.text ??\n  '';\n\nraw = String(raw).replace(/```json|```/g, '').trim();\n\nlet gaps;\ntry {\n  gaps = JSON.parse(raw);\n} catch (e) {\n  return [{ json: { parse_error: true, error: e.message, raw } }];\n}\n\nreturn [{ json: { gaps } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3008,
+        240
+      ],
+      "id": "450cda88-6ffa-473d-9df1-132378175759",
+      "name": "Parse Gaps"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\nlet raw =\n  item.candidates?.[0]?.content?.parts?.[0]?.text ??\n  item.content?.parts?.[0]?.text ??\n  item.text ??\n  '';\n\nraw = String(raw).replace(/```json|```/g, '').trim();\n\nlet estimates;\ntry {\n  estimates = JSON.parse(raw);\n} catch (e) {\n  return [{ json: { parse_error: true, error: e.message, raw } }];\n}\n\nreturn [{ json: { estimates } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3104,
+        64
+      ],
+      "id": "4b3af586-3c48-40ca-957d-07388d0c8b5f",
+      "name": "Parse Estimates"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        3264,
+        192
+      ],
+      "id": "51906bbe-ffec-401b-a3db-ec5fb914a838",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\nlet raw =\n  item.candidates?.[0]?.content?.parts?.[0]?.text ??\n  item.content?.parts?.[0]?.text ??\n  item.text ??\n  item.output ??\n  '';\n\nraw = String(raw).replace(/```json|```/g, '').trim();\n\nconst repair = (s) => s\n  .replace(/[\\u201C\\u201D]/g, '\"')\n  .replace(/([{,]\\s*)([A-Za-z_][A-Za-z0-9_]*)\"\\s*:/g, '$1\"$2\":')\n  .replace(/,\\s*([}\\]])/g, '$1');\n\nlet extraction;\nlet repaired = false;\ntry {\n  extraction = JSON.parse(raw);\n} catch (e1) {\n  try {\n    extraction = JSON.parse(repair(raw));\n    repaired = true;\n  } catch (e2) {\n    extraction = {\n      sufficiency: 'insufficient',\n      stated_requirements: [],\n      acceptance_criteria: [],\n      stakeholders: [],\n      personas: [],\n      deadlines: [],\n      dependencies: [],\n      ambiguities: [],\n      contradictions: [],\n      missing_info: ['SYSTEM ERROR: the extractor output could not be parsed as JSON. Re-run the input.'],\n      assumptions: [],\n      parse_failed: true\n    };\n  }\n}\n\nif (!(extraction.stated_requirements || []).length) {\n  extraction.sufficiency = 'insufficient';\n}\n\nreturn [{\n  json: {\n    extraction,\n    sufficiency: String(extraction.sufficiency || '').trim().toLowerCase(),\n    parse_failed: !!extraction.parse_failed,\n    json_repaired: repaired,\n    input_text: $('Input Guard').first().json.input_text\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1008,
+        112
+      ],
+      "id": "c455805b-244e-43dc-b068-7a96442f265f",
+      "name": "Parse Extraction"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3.5-flash-lite",
+          "mode": "list",
+          "cachedResultName": "models/gemini-3.5-flash-lite"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a Gap Analyzer. The input below was judged too vague or incomplete to write a PRD. Produce clarification questions that would make it actionable.\n\nRules:\n1. Every question must be grounded in an item from the extraction's ambiguities, missing_info, contradictions, or dependencies. Quote that item in \"grounded_in\".\n2. Do not invent requirements, guess what the stakeholder meant, propose solutions, or answer your own questions.\n3. Merge duplicates: one question per distinct gap.\n4. \"ask\" must be a stakeholder name or role from the extraction's stakeholders. If none fits, use \"Requester / Product Owner\".\n5. \"blocking\" is true if the gap prevents writing any requirement, otherwise false.\n6. readiness must be \"Not ready\".\n7. If the original input is empty or has no content at all, return an empty questions list.\n8. Return ONLY valid JSON. No prose, no code fences.\n9. Only ask about topics that appear in the original input. Do not ask about business goals, timelines, or scope unless the input mentions them. \"grounded_in\" must quote the original input or an ambiguities item, never a missing_info item.\nFor every dependency with eta \"unknown\", add one question asking the dependency owner for the ETA (use the word ETA). Set blocking to true if any story depends on it. Ground the question in that dependency item.\nWhen the input asks for a capability or an improvement without specifics (for example \"better reporting\" or \"a dashboard\"), include clarification questions that cover: (a) what data or metrics it should show, (b) what output format it should take, and (c) which users or audience it is for. Ground each question in the vague statement from the input. These questions are about the topic the input names, so they are allowed under the earlier rules. Do not suggest answers or invent a specific metric, format, or user.\nSchema:\n{\n  \"readiness\": \"Not ready\",\n  \"questions\": [\n    {\n      \"id\": \"Q1\",\n      \"question\": \"\",\n      \"ask\": \"\",\n      \"grounded_in\": \"\",\n      \"related_ids\": [],\n      \"blocking\": true\n    }\n  ]\n}\n\nOriginal input:\n{{ $('Parse Extraction').item.json.input_text }}\n\nExtraction JSON:\n{{ JSON.stringify($('Parse Extraction').item.json.extraction, null, 2) }}"
+            }
+          ]
+        },
+        "simplify": false,
+        "builtInTools": {},
+        "options": {
+          "maxOutputTokens": 8192
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        1456,
+        -16
+      ],
+      "id": "dd07d491-80e5-48af-bcca-06a00f1fe5e5",
+      "name": "Gap Analyzer (Insufficient)",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "nT51ruSjlkaPDSgn",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.first().json;\n\nlet raw =\n  item.candidates?.[0]?.content?.parts?.[0]?.text ??\n  item.content?.parts?.[0]?.text ??\n  item.text ??\n  '';\n\nraw = String(raw).replace(/```json|```/g, '').trim();\n\nlet gaps;\ntry {\n  gaps = JSON.parse(raw);\n} catch (e) {\n  return [{ json: { parse_error: true, error: e.message, raw } }];\n}\n\nconst ext = $('Parse Extraction').first().json.extraction;\n\nlet md = '# No PRD generated\\n\\nThe input does not contain enough information to extract requirements.\\n';\n\nmd += '\\n## What is missing\\n';\n(ext.missing_info || []).forEach(m => { md += `- ${m}\\n`; });\n\nif ((ext.ambiguities || []).length) {\n  md += '\\n## Ambiguous statements\\n';\n  ext.ambiguities.forEach(a => { md += `- ${a.item}: ${a.why_ambiguous}\\n`; });\n}\nif ((ext.stakeholders || []).length) {\n  md += '\\n## Stakeholder viewpoints\\n';\n  ext.stakeholders.forEach(s => { md += `- ${s.name}${s.role ? ' (' + s.role + ')' : ''}: ${s.viewpoint}\\n`; });\n}\nif ((ext.contradictions || []).length) {\n  md += '\\n## Tensions needing stakeholder resolution\\n';\n  ext.contradictions.forEach(c => { md += `- \"${c.statement_a}\" vs \"${c.statement_b}\"\\n`; });\n}\nmd += `\\n## Clarification questions\\nReadiness: ${gaps.readiness || 'Not ready'}\\n`;\n(gaps.questions || []).forEach(q => {\n  md += `\\n${q.id}. ${q.question}\\n   - Ask: ${q.ask}\\n   - Grounded in: ${q.grounded_in}\\n`;\n});\n\nreturn [{\n  json: {\n    status: 'INSUFFICIENT',\n    markdown: md,\n    extraction: ext,\n    gaps\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1760,
+        -16
+      ],
+      "id": "7bfc9b6b-49dc-4a01-ae28-3993d94412d9",
+      "name": "Format Insufficient Output"
+    },
+    {
+      "parameters": {
+        "jsCode": "const base = $('Parse Stories').first().json;\nconst stories = base.stories;\nconst prd = base.prd_markdown;\nconst gaps = $('Parse Gaps').first().json.gaps || {};\nconst est = $('Parse Estimates').first().json.estimates || {};\n\nconst byId = {};\n(est.estimates || []).forEach(e => { byId[e.story_id] = e; });\n\nlet md = prd + '\\n\\n---\\n\\n# Epics, Features and User Stories\\n';\n\n(stories.epics || []).forEach(ep => {\n  md += `\\n## ${ep.id}: ${ep.title}\\n${ep.description || ''}\\n`;\n  (ep.features || []).forEach(f => {\n    md += `\\n### ${f.id}: ${f.title}\\n`;\n    (f.stories || []).forEach(s => {\n      const e = byId[s.id];\n      md += `\\n**${s.id}**: ${s.story}\\n`;\n      md += `- Priority: ${s.priority} (${s.priority_rationale})\\n`;\n      md += `- Source requirements: ${(s.source_req_ids || []).join(', ')}\\n`;\n      md += `- Linked NFRs: ${(s.linked_nfrs || []).join(', ') || 'None'}\\n`;\n      md += `- Acceptance criteria: ${(s.acceptance_criteria || []).length ? s.acceptance_criteria.join('; ') : 'None stated in source'}\\n`;\n      if (e) {\n        md += `- Size (provisional): ${e.size}. ${e.rationale}\\n`;\n        if (e.underspecified) md += `- FLAG, underspecified: ${e.underspecified_reason}\\n`;\n      }\n    });\n  });\n});\n\nmd += `\\n---\\n\\n# Gap Analysis\\nReadiness: ${gaps.readiness || 'Unknown'}\\n`;\n(gaps.questions || []).forEach(q => {\n  md += `\\n${q.id}. ${q.question}\\n`;\n  md += `   - Ask: ${q.ask}\\n   - Blocking: ${q.blocking ? 'Yes' : 'No'}\\n   - Grounded in: ${q.grounded_in}\\n`;\n});\n\nreturn [{\n  json: {\n    status: 'COMPLETE',\n    markdown: md,\n    stories,\n    gaps,\n    estimates: est\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3488,
+        192
+      ],
+      "id": "aa6f9beb-8223-49a6-82a4-908c8a2625d2",
+      "name": "Format Output"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Edit these to match YOUR node names exactly\nconst MODEL = 'gemini-3.5-flash-lite';\nconst AGENTS = [\n  { node: 'Requirement Extractor Agent', name: 'requirement_extractor' },\n  { node: 'PRD Generator Agent', name: 'prd_generator' },\n  { node: 'Story Breakdown Agent', name: 'story_breakdown' },\n  { node: 'Gap Analyzer Agent', name: 'gap_analyzer' },\n  { node: 'Scope Estimator Agent', name: 'scope_estimator' },\n  { node: 'Gap Analyzer (Insufficient)', name: 'gap_analyzer_insufficient' }\n];\n\nconst tryGet = (name) => {\n  try { const i = $(name).first(); return i ? i.json : null; } catch (e) { return null; }\n};\nconst uuid = () => 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {\n  const r = Math.random() * 16 | 0;\n  return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);\n});\nconst trunc = (v, n = 8000) => {\n  const s = typeof v === 'string' ? v : JSON.stringify(v);\n  return s && s.length > n ? s.slice(0, n) + '...[truncated]' : s;\n};\nconst norm = s => String(s || '').replace(/\\s+/g, ' ').trim().toLowerCase();\n\nconst now = new Date().toISOString();\nconst traceId = uuid();\n\n// Which path did this run take?\nlet status = 'BLOCKED_BY_GUARD';\nlet finalOutput = tryGet('Insufficient Input');\nif (tryGet('Format Output')) { status = 'COMPLETE'; finalOutput = tryGet('Format Output'); }\nelse if (tryGet('Format Insufficient Output')) { status = 'INSUFFICIENT'; finalOutput = tryGet('Format Insufficient Output'); }\n\nconst form = tryGet('On form submission') || {};\nconst guard = tryGet('Input Guard') || {};\nconst inputText = guard.input_text || form.input_text || '';\nconst parsed = tryGet('Parse Extraction');\nconst ext = parsed ? parsed.extraction : null;\n\nconst batch = [];\nbatch.push({\n  id: uuid(), type: 'trace-create', timestamp: now,\n  body: {\n    id: traceId, name: 'prd-genie-run', timestamp: now,\n    input: trunc(inputText),\n    output: trunc(finalOutput && (finalOutput.markdown || finalOutput.message || finalOutput)),\n       metadata: { status, input_type: form.input_type || null, sufficiency: ext ? ext.sufficiency : null, rag_chunks: (tryGet('Join Template') || {}).chunk_count ?? null },\n    tags: ['prd-genie']\n  }\n});\n\n// One generation per agent that actually ran\nAGENTS.forEach(a => {\n  const raw = tryGet(a.node);\n  if (!raw) return;\n  const text = raw.candidates?.[0]?.content?.parts?.[0]?.text ?? raw.content?.parts?.[0]?.text ?? raw.text ?? '';\n  const um = raw.usageMetadata;\n  const body = {\n    id: uuid(), traceId, name: a.name, model: MODEL,\n    startTime: now, endTime: now,\n    input: a.name.startsWith('requirement') ? trunc(inputText) : `(stage input: output of previous agent; see n8n execution)`,\n    output: trunc(text),\n    metadata: { n8n_node: a.node }\n  };\n  if (um) {\n    body.usageDetails = { input: um.promptTokenCount, output: um.candidatesTokenCount, total: um.totalTokenCount };\n  } else {\n    body.usageDetails = { output: Math.ceil(String(text).length / 4) };\n    body.metadata.tokens_estimated = true;\n  }\n  batch.push({ id: uuid(), type: 'generation-create', timestamp: now, body });\n});\n\n// Score 1: quote grounding (deterministic hallucination check)\nif (ext) {\n  const src = norm(inputText);\n  const reqs = ext.stated_requirements || [];\n  const supported = reqs.filter(r => r.source_quote && src.includes(norm(r.source_quote))).length;\n  const grounding = reqs.length ? supported / reqs.length : 1;\n  batch.push({\n    id: uuid(), type: 'score-create', timestamp: now,\n    body: {\n      id: uuid(), traceId, name: 'quote_grounding', value: grounding,\n      comment: `${supported}/${reqs.length} extracted requirements have a source_quote found in the input`\n    }\n  });\n}\n\n// Score 2: story traceability\nconst st = tryGet('Parse Stories');\nif (st && st.stories) {\n  const all = [];\n  (st.stories.epics || []).forEach(e => (e.features || []).forEach(f => (f.stories || []).forEach(s => all.push(s))));\n  const traced = all.filter(s => (s.source_req_ids || []).length > 0).length;\n  batch.push({\n    id: uuid(), type: 'score-create', timestamp: now,\n    body: {\n      id: uuid(), traceId, name: 'story_traceability', value: all.length ? traced / all.length : 1,\n      comment: `${traced}/${all.length} stories cite a source requirement`\n    }\n  });\n}\n\nconst sp = tryGet('Parse Stories');\nconst result = {\n  test_id: guard.test_id || null,\n  source_file: guard.source_file || null,\n  trace_id: traceId,\n  input_text: inputText,\n  status,\n  markdown: finalOutput ? (finalOutput.markdown || finalOutput.message || '') : '',\n  prd_markdown: (tryGet('Collect PRD') || {}).prd_markdown || '',\n  extraction: ext,\n  stories: sp ? sp.stories : null,\n  gaps: (tryGet('Parse Gaps') || {}).gaps || (finalOutput && finalOutput.gaps) || null,\n  estimates: (tryGet('Parse Estimates') || {}).estimates || null,\n  parse_failed: parsed ? !!parsed.parse_failed : false,\n  json_repaired: parsed ? !!parsed.json_repaired : false\n};\n\nreturn [{ json: { trace_id: traceId, status, body: { batch }, result } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3648,
+        -144
+      ],
+      "id": "00a72277-e14a-4658-aa73-c2461fd8a8c2",
+      "name": "Build Langfuse Batch"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://us.cloud.langfuse.com/api/public/ingestion",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBasicAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.body) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        3872,
+        -144
+      ],
+      "id": "609c818b-e362-41df-81e8-ed8ed3588d63",
+      "name": "Send to Langfuse",
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "Yq9VgIgjfv0D7Ln0",
+          "name": "Langfuse"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -16,
+        160
+      ],
+      "id": "577f0f1c-9ff2-4fd4-be08-62f8fac15a2e",
+      "name": "When Executed by Another Workflow"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: $('Build Langfuse Batch').first().json.result }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4096,
+        -64
+      ],
+      "id": "b2fa31da-c54c-48e5-b6b6-288511c30346",
+      "name": "Return Result"
+    },
+    {
+      "parameters": {
+        "mode": "load",
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "prd-genie",
+          "mode": "list",
+          "cachedResultName": "prd-genie"
+        },
+        "prompt": "PRD template structure and section guidance",
+        "options": {
+          "pineconeNamespace": "prd-genie"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        1072,
+        272
+      ],
+      "id": "d6d66ee7-46c6-4c9e-9f0c-4bd6217b9cfe",
+      "name": "Retrieve Template",
+      "credentials": {
+        "pineconeApi": {
+          "id": "yuuhkUU4RGB3vxFF",
+          "name": "Pinecone account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1088,
+        448
+      ],
+      "id": "dd0d69be-97a7-4f10-b34d-5102c63f9ceb",
+      "name": "Embeddings Google Gemini",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "nT51ruSjlkaPDSgn",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const chunks = $input.all()\n  .map(i => i.json.document?.pageContent ?? i.json.pageContent ?? i.json.text ?? '')\n  .filter(Boolean);\n\nreturn [{\n  json: {\n    template_context: chunks.join('\\n\\n---\\n\\n'),\n    chunk_count: chunks.length\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1488,
+        320
+      ],
+      "id": "5454bae1-45e4-43a9-94f5-849c420b4438",
+      "name": "Join Template"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Input Guard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guard Check": {
+      "main": [
+        [
+          {
+            "node": "Insufficient Input",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Requirement Extractor Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insufficient Input": {
+      "main": [
+        [
+          {
+            "node": "Build Langfuse Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Requirement Extractor Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Extraction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Input Guard": {
+      "main": [
+        [
+          {
+            "node": "Guard Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sufficiency Check": {
+      "main": [
+        [
+          {
+            "node": "Gap Analyzer (Insufficient)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Retrieve Template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PRD Generator Agent": {
+      "main": [
+        [
+          {
+            "node": "Collect PRD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect PRD": {
+      "main": [
+        [
+          {
+            "node": "Story Breakdown Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Story Breakdown Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Stories",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Stories": {
+      "main": [
+        [
+          {
+            "node": "Gap Analyzer Agent",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Scope Estimator Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gap Analyzer Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Gaps",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Gaps": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Scope Estimator Agent": {
+      "main": [
+        [
+          {
+            "node": "Parse Estimates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Estimates": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Format Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Extraction": {
+      "main": [
+        [
+          {
+            "node": "Sufficiency Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gap Analyzer (Insufficient)": {
+      "main": [
+        [
+          {
+            "node": "Format Insufficient Output",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Output": {
+      "main": [
+        [
+          {
+            "node": "Build Langfuse Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Insufficient Output": {
+      "main": [
+        [
+          {
+            "node": "Build Langfuse Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Langfuse Batch": {
+      "main": [
+        [
+          {
+            "node": "Send to Langfuse",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Input Guard",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send to Langfuse": {
+      "main": [
+        [
+          {
+            "node": "Return Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Retrieve Template",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Retrieve Template": {
+      "main": [
+        [
+          {
+            "node": "Join Template",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Join Template": {
+      "main": [
+        [
+          {
+            "node": "PRD Generator Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "fdcb228c-e98f-45e5-8307-9f57d571d889",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "id": "oeg2hRNXOyf9yRUV",
+  "tags": []
+}

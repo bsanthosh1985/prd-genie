@@ -1,0 +1,231 @@
+{
+  "name": "PRD Genie - Test Runner",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "5b326bbc-2716-4590-8040-debca71965f9",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "jsCode": "const ONLY = [];   // smoke test: e.g. ['T9', 'T1']. Leave empty to run all.\n\nconst tests = [\n  { test_id: 'T1',  input_text: 'The user should be able to filter reports by date range, category, and status. Results must load in under 2 seconds. PM: Sarah. Deadline: Q3.' },\n  { test_id: 'T2',  input_text: 'We need better reporting. Something like what Competitor X has.' },\n  { test_id: 'T3',  input_text: 'The dashboard should auto-refresh every 5 seconds. [Later in same meeting] Performance is critical, minimize API calls.' },\n  { test_id: 'T4',  input_text: 'Users need to export reports as PDF and CSV. PDF must include company logo. CSV must preserve formulas.' },\n  { test_id: 'T5',  input_text: 'Discussed dashboard... John mentioned something about real-time... budget TBD...' },\n  { test_id: 'T6',  input_text: 'Engineering wants microservices. Design wants single-page app. PM wants it shipped by March.' },\n  { test_id: 'T7',  input_text: 'API must support 10,000 concurrent users. Response time < 200ms at p95. Must integrate with Salesforce REST API v52.' },\n  { test_id: 'T8',  input_text: 'Admins need bulk user management. End users need a simplified view. Auditors need read-only access with full history.' },\n  { test_id: 'T9',  input_text: 'Meeting happened. Notes: none.' },\n  { test_id: 'T10', input_text: 'SSO login requires the new auth service which is being built by Team Alpha. ETA unknown.' }\n];\n\nreturn tests\n  .filter(t => !ONLY.length || ONLY.includes(t.test_id))\n  .map(t => ({ json: { ...t, input_type: 'transcript' } }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "9e3a7808-5110-4140-b90f-be9af115b69d",
+      "name": "Test Cases"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        448,
+        0
+      ],
+      "id": "7f0aef62-11e5-4df0-b8ef-5c1e4add2d1a",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "workflowId": {
+          "__rl": true,
+          "value": "oeg2hRNXOyf9yRUV",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/oeg2hRNXOyf9yRUV",
+          "cachedResultName": "PRD-Genie Main"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": true
+        }
+      },
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.4,
+      "position": [
+        672,
+        208
+      ],
+      "id": "777dcc52-f09b-44a6-9830-d4846cd87e29",
+      "name": "Call 'PRD-Genie Main'",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "amount": 20
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1120,
+        208
+      ],
+      "id": "fd36684a-dc98-477e-bb39-1959ec56c8df",
+      "name": "Wait",
+      "webhookId": "c760a4a8-0fc5-4af9-92ce-b9d823c67db4"
+    },
+    {
+      "parameters": {
+        "jsCode": "const MODEL = 'gemini-3.5-flash-lite';\nconst RUN_LABEL = 'Run 3 - with Pinecone RAG';\n\nconst NAMES = {\n  T1: 'Detailed transcript', T2: 'Vague brief', T3: 'Contradictory',\n  T4: 'Feature request with acceptance criteria', T5: 'Incomplete notes',\n  T6: 'Multi-stakeholder', T7: 'Technical requirements', T8: 'User persona heavy',\n  T9: 'Empty/minimal', T10: 'Feature with dependencies',\n  T11: 'PRD generation (from T1)', T12: 'Story breakdown (from T11)'\n};\nconst MANUAL = {\n  T3: 'Confirm the contradiction is flagged for stakeholder resolution and neither statement is dropped.',\n  T6: 'Confirm all three viewpoints are captured neutrally and no side is favoured.',\n  T10: 'Confirm the unknown ETA is flagged as a risk.',\n  T11: 'Skim the PRD for any content not in T1.',\n  T12: 'Confirm the priorities are sensible.'\n};\nconst STORIES_MARK = '# Epics, Features and User Stories';\n\nconst norm = s => String(s == null ? '' : s).replace(/\\s+/g, ' ').trim().toLowerCase();\nconst flatJson = v => norm(JSON.stringify(v == null ? '' : v));\n\nconst results = {};\n$input.all().forEach(i => { if (i.json && i.json.test_id) results[i.json.test_id] = i.json; });\n\nconst allStories = r => {\n  const out = [];\n  ((r.stories && r.stories.epics) || []).forEach(e =>\n    (e.features || []).forEach(f => (f.stories || []).forEach(s => out.push(s))));\n  return out;\n};\n\nconst evaluate = (id, r) => {\n  const checks = [];\n  const add = (name, ok) => checks.push({ name, ok: !!ok });\n  if (!r) { add('workflow returned a result', false); return checks; }\n\n  const ext = r.extraction || {};\n  const reqs = ext.stated_requirements || [];\n  const src = norm(r.input_text);\n  const md = norm(r.markdown);\n  const extText = flatJson(ext);\n  const gapText = flatJson(r.gaps);\n  const all = extText + ' ' + gapText + ' ' + md;\n\n  add('extractor JSON parsed', !r.parse_failed);\n  add('every requirement quote found in input', reqs.every(q => src.includes(norm(q.source_quote))));\n  add('no sample-PRD content leaked into output', !/bookmark/.test(md));\n\n  switch (id) {\n    case 'T1':\n      ['date range', 'category', 'status', '2 seconds', 'sarah', 'q3']\n        .forEach(k => add(`mentions \"${k}\"`, all.includes(k)));\n      add('PRD generated (status COMPLETE)', r.status === 'COMPLETE');\n      add('1 to 4 requirements, none extra', reqs.length >= 1 && reqs.length <= 4);\n      break;\n    case 'T2':\n      add('flagged insufficient or ambiguous', r.status === 'INSUFFICIENT' || (ext.ambiguities || []).length > 0);\n      add('no specific requirements invented', reqs.length === 0);\n      add('asks about metrics', /metric/.test(all));\n      add('asks about format', /format/.test(all));\n      add('asks about users', /user|audience|persona/.test(all));\n      break;\n    case 'T3': {\n      const c = flatJson(ext.contradictions);\n      add('contradiction recorded', (ext.contradictions || []).length >= 1);\n      add('contradiction is refresh vs API calls', /refresh/.test(c) && /api|call|performance/.test(c));\n      add('flagged for resolution', /resol|stakeholder/.test(c + ' ' + gapText + ' ' + md));\n      break;\n    }\n    case 'T4': {\n      const ac = (ext.acceptance_criteria || []).map(a => norm(a.text));\n      add('acceptance criteria extracted verbatim', ac.length > 0 && ac.every(t => src.includes(t)));\n      add('PDF logo criterion present', ac.some(t => t.includes('logo')));\n      add('CSV formulas criterion present', ac.some(t => t.includes('formula')));\n      add('no extra criteria (max 2)', ac.length <= 2);\n      const sac = allStories(r).flatMap(s => (s.acceptance_criteria || []).map(norm));\n      add('stories carry both criteria', sac.some(t => t.includes('logo')) && sac.some(t => t.includes('formula')));\n      add('story criteria all verbatim from input', sac.every(t => src.includes(t)));\n      break;\n    }\n    case 'T5': {\n      const m = flatJson(ext.missing_info) + ' ' + gapText;\n      add('flagged insufficient', r.status === 'INSUFFICIENT');\n      add('no requirements invented', reqs.length === 0);\n      add('asks about the dashboard', /dashboard/.test(m));\n      add('asks about real-time', /real.?time/.test(m));\n      add('asks about the budget', /budget/.test(m));\n      add('no PRD generated', !md.includes('## 1. overview'));\n      break;\n    }\n    case 'T6':\n      ['engineering', 'microservice', 'design', 'single', 'march']\n        .forEach(k => add(`captures \"${k}\"`, extText.includes(k)));\n      add('tension identified', (ext.contradictions || []).length >= 1 || /tension|conflict/.test(all));\n      break;\n    case 'T7': {\n      add('10,000 preserved', extText.includes('10,000'));\n      add('200ms at p95 preserved', /200\\s?(ms|milliseconds)/.test(extText) && extText.includes('p95'));\n      add('Salesforce v52 preserved', extText.includes('salesforce') && extText.includes('v52'));\n      const num = reqs.filter(q => /10,000|200\\s?(ms|milliseconds)|v52/.test(norm(q.text)));\n      add('numeric requirements classified as nfr', num.length >= 2 && num.every(q => q.type === 'nfr'));\n      break;\n    }\n    case 'T8': {\n      const pers = flatJson(ext.personas);\n      const sp = allStories(r).map(s => norm(s.persona));\n      add('Admin persona', /admin/.test(pers));\n      add('End User persona', /end.?user/.test(pers));\n      add('Auditor persona', /auditor/.test(pers));\n      add('separate Admin story', sp.some(p => p.includes('admin')));\n      add('separate End User story', sp.some(p => /end.?user/.test(p)));\n      add('separate Auditor story', sp.some(p => p.includes('auditor')));\n      break;\n    }\n    case 'T9':\n      add('no PRD generated', r.status !== 'COMPLETE' && !md.includes('## 1. overview'));\n      add('flagged as no requirements', r.status === 'BLOCKED_BY_GUARD' || r.status === 'INSUFFICIENT');\n      break;\n    case 'T10': {\n      const dep = flatJson(ext.dependencies);\n      add('SSO feature extracted', /sso/.test(extText));\n      add('auth service dependency flagged', /auth/.test(dep));\n      add('Team Alpha identified', dep.includes('team alpha'));\n      add('ETA recorded as unknown', (ext.dependencies || []).some(d => norm(d.eta) === 'unknown'));\n      add('unknown ETA surfaced as risk or question', /\\beta\\b/.test(md + ' ' + gapText));\n      break;\n    }\n    case 'T11': {\n      const rawPrd = r.prd_markdown || (r.markdown || '').split(STORIES_MARK)[0];\n      const prd = norm(String(rawPrd).replace(/\\\\n/g, '\\n'));\n      add(`PRD text present (${prd.length} characters)`, prd.length > 200);\n      const heads = ['overview', 'goals', 'user personas', 'feature list', 'acceptance criteria',\n        'non-functional requirements', 'stakeholders and deadlines', 'dependencies and risks',\n        'assumptions', 'open questions'];\n      heads.forEach((h, i) => add(\n        `has section ${i + 1}. ${h}`,\n        new RegExp('#+\\\\s*' + (i + 1) + '\\\\.?\\\\s*' + h.replace(/-/g, '[- ]')).test(prd)\n      ));\n      add('mentions the T1 requirements', prd.includes('filter') && prd.includes('2 seconds'));\n      add('no content from other tests', !/\\b(export|pdf|csv|salesforce|sso|dashboard|bookmarks?)\\b/.test(prd));\n      break;\n    }\n    case 'T12': {\n      const st = allStories(r);\n      add('epics and stories produced', ((r.stories && r.stories.epics) || []).length > 0 && st.length > 0);\n      add('all stories in \"As a ..., I want ...\" format',\n        st.length > 0 && st.every(s => /^as an? .+,? i want/i.test(String(s.story || ''))));\n      add('every story has a valid priority',\n        st.length > 0 && st.every(s => ['Must Have', 'Should Have', 'Nice to Have'].includes(s.priority)));\n      break;\n    }\n  }\n  return checks;\n};\n\nconst ids = ['T1','T2','T3','T4','T5','T6','T7','T8','T9','T10','T11','T12'];\nconst cap = (s, n = 3500) => { s = String(s || ''); return s.length > n ? s.slice(0, n) + '\\n...[truncated]' : s; };\n\nconst rows = ids.map(id => {\n  const derived = id === 'T11' || id === 'T12';\n  const r = derived ? results['T1'] : results[id];\n  const checks = evaluate(id, r);\n  const failed = checks.filter(c => !c.ok).map(c => c.name);\n  let output = r ? (r.markdown || '') : 'NO RESULT';\n  if (id === 'T11' && r) output = r.prd_markdown || (r.markdown || '').split(STORIES_MARK)[0];\n  if (id === 'T12' && r) output = STORIES_MARK + (r.markdown || '').split(STORIES_MARK)[1];\n  return {\n    test_id: id,\n    name: NAMES[id],\n    input: derived ? '(derived from T1 output)' : (r ? r.input_text : ''),\n    route: r ? r.status : 'NO RESULT',\n    result: failed.length ? 'FAIL' : 'PASS',\n    checks_passed: `${checks.length - failed.length} of ${checks.length}`,\n    failed_checks: failed.join('; '),\n    manual_review: MANUAL[id] || '',\n    json_repaired: r ? r.json_repaired : '',\n    parse_failed: r ? r.parse_failed : '',\n    trace_id: r ? r.trace_id : '',\n    requirements_found: r && r.extraction ? (r.extraction.stated_requirements || []).map(q => q.text).join(' | ') : '',\n    criteria_found: r && r.extraction ? (r.extraction.acceptance_criteria || []).map(a => a.text).join(' | ') : '',\n    contradictions_found: r && r.extraction ? (r.extraction.contradictions || []).map(c => `${c.statement_a} <> ${c.statement_b}`).join(' | ') : '',\n    output\n  };\n});\n\nconst esc = v => `\"${String(v == null ? '' : v).replace(/\"/g, '\"\"')}\"`;\nconst cols = ['test_id','name','input','route','result','checks_passed','failed_checks','manual_review','json_repaired','parse_failed','trace_id','requirements_found','criteria_found','contradictions_found'];\nconst csv = [cols.join(',')].concat(rows.map(r => cols.map(c => esc(r[c])).join(','))).join('\\n');\n\nconst passed = rows.filter(r => r.result === 'PASS').length;\nlet report = `# PRD Genie baseline test results\\n\\n${RUN_LABEL}\\nRun date: ${new Date().toISOString()}\\nModel: ${MODEL}\\nPassed: ${passed} / ${rows.length}\\n\\n`;\nreport += '| Test | Name | Route | Result | Checks | Failed checks |\\n|---|---|---|---|---|---|\\n';\nrows.forEach(r => {\n  report += `| ${r.test_id} | ${r.name} | ${r.route} | ${r.result} | ${r.checks_passed} | ${r.failed_checks || '-'} |\\n`;\n});\nreport += '\\nAutomated checks are keyword and structure tests. Items under \"Manual review\" need a human look.\\n';\nrows.forEach(r => {\n  report += `\\n---\\n\\n## ${r.test_id}: ${r.name}: ${r.result}\\n\\n`;\n  report += `**Input:** ${r.input}\\n\\n**Route:** ${r.route}  |  **Checks passed:** ${r.checks_passed}  |  **JSON repaired:** ${r.json_repaired}\\n\\n`;\n  if (r.requirements_found) report += `**Requirements extracted:** ${r.requirements_found}\\n\\n`;\n  if (r.criteria_found) report += `**Acceptance criteria extracted:** ${r.criteria_found}\\n\\n`;\n  if (r.contradictions_found) report += `**Contradictions recorded:** ${r.contradictions_found}\\n\\n`;\n  if (r.failed_checks) report += `**Failed checks:** ${r.failed_checks}\\n\\n`;\n  if (r.manual_review) report += `**Manual review:** ${r.manual_review}\\n\\n`;\n  report += `**Output:**\\n\\n~~~markdown\\n${cap(r.output)}\\n~~~\\n`;\n});\n\nreturn [{ json: { passed, total: rows.length, csv, report_md: report, rows } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        48
+      ],
+      "id": "accc5950-1f3d-45eb-bf93-6d9dd4d0fd09",
+      "name": "Evaluate Results"
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "csv",
+        "options": {
+          "fileName": "prdgenie_test_results.csv"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        912,
+        -128
+      ],
+      "id": "f4bea39d-76f8-4ca9-8dee-573ae3f250db",
+      "name": "Results CSV"
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "report_md",
+        "options": {
+          "fileName": "prdgenie_test_results.md"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        896,
+        48
+      ],
+      "id": "05336d3a-baad-45ee-b22f-8ff07d77bd7e",
+      "name": "Results Report"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Test Cases",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Test Cases": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Evaluate Results",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Call 'PRD-Genie Main'",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'PRD-Genie Main'": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Evaluate Results": {
+      "main": [
+        [
+          {
+            "node": "Results Report",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Results CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Results Report": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "7d24700c-c74a-4484-bd21-6a33a9d00239",
+  "meta": {},
+  "nodeGroups": [],
+  "id": "YBghWMuAi2RfZGOC",
+  "tags": []
+}

@@ -1,0 +1,158 @@
+{
+  "name": "PRD Genie - Ingest Templates",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "ae332627-6ae8-4505-b373-9bc6adf8759a",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "prd-genie",
+          "mode": "list",
+          "cachedResultName": "prd-genie"
+        },
+        "options": {
+          "pineconeNamespace": "prd-genie",
+          "clearNamespace": true
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        448,
+        0
+      ],
+      "id": "497fd9b8-eb42-429b-b48c-bbe7fc855484",
+      "name": "Pinecone Vector Store",
+      "credentials": {
+        "pineconeApi": {
+          "id": "yuuhkUU4RGB3vxFF",
+          "name": "Pinecone account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const template = `PRD TEMPLATE - STRUCTURE AND STYLE GUIDE\nUse these ten sections, in this order, each exactly once.\n# PRD: <short title>\n## 1. Overview - one or two sentences on what is being built, taken only from the source.\n## 2. Goals - stated goals only. If none are stated, say so.\n## 3. User Personas - personas named in the source.\n## 4. Feature List - one bullet per requirement, with its ID (R1, R2).\n## 5. Acceptance Criteria - copied verbatim from the source.\n## 6. Non-Functional Requirements - performance, scale, and integration requirements with exact numbers.\n## 7. Stakeholders and Deadlines - names, roles, and dates.\n## 8. Dependencies and Risks - dependencies, unknown ETAs, and conflicts.\n## 9. Assumptions - marked Unconfirmed.\n## 10. Open Questions - every ambiguity, gap, and contradiction.\nStyle: short declarative sentences, neutral tone, no marketing language, no invented detail.`;\n\nconst pastPrd = `PAST PRD EXAMPLE - WRITING STYLE REFERENCE ONLY, UNRELATED PRODUCT. Never reuse its content.\n# PRD: Bookmarks List\n## 1. Overview\nUsers can bookmark an item and find it again from a Bookmarks list.\n## 4. Feature List\n- R1: Users can bookmark an item and open it later from a Bookmarks list.\n## 6. Non-Functional Requirements\n- R2: Opening the Bookmarks list takes under 3 seconds.\n## 10. Open Questions\n- The maximum number of bookmarks per user is not specified.\nStyle note: each requirement is one line prefixed with its ID, and open questions are plain bullets.`;\n\nreturn [\n  { json: { text: template, doc_type: 'template' } },\n  { json: { text: pastPrd, doc_type: 'past_prd' } }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ],
+      "id": "f8f95b14-bae6-42b5-bd5d-a0a69606f53a",
+      "name": "Template Docs"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.embeddingsGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        496,
+        208
+      ],
+      "id": "7ff082e4-654f-4b7f-a44c-e2c4f11be317",
+      "name": "Embeddings Google Gemini",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "nT51ruSjlkaPDSgn",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonMode": "expressionData",
+        "jsonData": "={{ $json.text }}",
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "doc_type",
+                "value": "={{ $json.doc_type }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        592,
+        208
+      ],
+      "id": "03f7c6dd-5eee-4092-a264-624dda4d466c",
+      "name": "Default Data Loader"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Template Docs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Template Docs": {
+      "main": [
+        [
+          {
+            "node": "Pinecone Vector Store",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings Google Gemini": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Pinecone Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Pinecone Vector Store",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "7f696d79-305c-4bf5-9dc4-34a8a94d1609",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "id": "OzstL2mot4eue42p",
+  "tags": []
+}
