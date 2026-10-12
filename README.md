@@ -81,7 +81,6 @@ samples/                           example PRD output files generated from Drive
 | [Q2: Program charter](docs/Q2_Program_Charter.md) | Vision, objectives, scope, success criteria, timeline, risks, stakeholders, rollout |
 | [Q3: Build writeup](docs/Q3_Build_Writeup.md) | Design, implementation, observability, baseline results, cost and evaluation strategy |
 | [Q4: Reflection](docs/Q4_Reflection.md) | Trace findings, improvement plan, risks of AI-generated PRDs |
-| [Demo script](docs/Demo_Script.md) | Shot-by-shot script for the 5-minute demo video |
 | [Slide deck](deck/PRD_Genie_Capstone_Deck.pptx) | Capstone presentation |
 
 ## Setup
