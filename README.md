@@ -68,7 +68,7 @@ workflows/
   PRD_Genie_Ingest_Templates.json  one-time load of the PRD template into Pinecone
 test-results/                      final baseline results (CSV and Markdown) and earlier runs
 screenshots/                       canvases, PRD in action, Langfuse traces and scores
-docs/                              Q1 to Q4 write-ups, architecture diagram (PNG and SVG), demo script
+docs/                              Q1 to Q4 write-ups, architecture diagram (PNG and SVG)
 deck/                              slide deck (PowerPoint)
 samples/                           example PRD output files generated from Drive inputs
 ```
