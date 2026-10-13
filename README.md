@@ -1,3 +1,6 @@
+
+| [Demo video](https://youtu.be/O9hjNv1Nv1c) | Walkthrough of the workflow, live Drive demo, traces and results |
+
 # PRD Genie: AI-Powered Product Documentation Assistant
 
 PRD Genie reads meeting transcripts, product briefs, and stakeholder notes, then produces a structured PRD, Epics / Features / User Stories with priorities, a gap analysis with clarification questions, and T-shirt size estimates. It is built in n8n with Google Gemini, Pinecone, and Langfuse, as the capstone for *Applied Agentic AI for PMs/TPMs* (NeuronForge Technologies scenario).
